@@ -1,0 +1,23 @@
+name: CI PR检测
+
+on:
+  pull_request:
+    branches: [homework1]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python 3.x
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+
+    - name: Perform check
+      run: python3 .github/check.py
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
