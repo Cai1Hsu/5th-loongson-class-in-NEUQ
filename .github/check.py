@@ -1,6 +1,6 @@
 import os
+import subprocess
 import requests
-from git import Repo
 
 message = ""
 approve = True
@@ -8,30 +8,33 @@ approve = True
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 headers = {'Authorization': f'token {GITHUB_TOKEN}'}
 pr_number = os.environ['PR_NUMBER']
-repo = Repo('.')
-review_url = f'https://api.github.com/repos/{os.environ["GITHUB_REPOSITORY"]}/pulls/{pr_number}/reviews'
-comment_url = f'https://api.github.com/repos/{os.environ["GITHUB_REPOSITORY"]}/issues/{pr_number}/comments'
+repo = 'https://github.com/Vincent-ice/5th-loongson-class-in-NEUQ'
+review_url = f'{repo}/pulls/{pr_number}/reviews'
+comment_url = f'{repo}/issues/{pr_number}/comments'
+    
 
 def check_branch():
     source_branch = os.environ['GITHUB_HEAD_REF']
     target_branch = os.environ['GITHUB_BASE_REF']
     if source_branch != 'homework1' or target_branch != 'homework1':
-        message += 'PR 的源分支和目标分支必须都是 `homework1`。\n'
+        message += 'PR 的源分支和目标分支必须都是 homework1。\n'
         approve = False
 
 def check_sync():
-    upstream = repo.remote('upstream')
-    upstream.fetch()
-    ahead, behind = upstream.ahead_behind('homework1')
+    os.system('git fetch upstream')
+    ahead_behind = os.popen('git rev-list --left-right --count HEAD...upstream/homework1').read().strip()
+    ahead, behind = map(int, ahead_behind.split())
     if ahead > 0:
         message += '请将您的分支与上游同步。以下命令将您的分支与上游同步：'
         message += '`git pull upstream homework1`'
         approve = False
         
 def check_changes():
-    changed_files = [item.a_path for item in repo.index.diff(None)]
-    if not all(file.startswith('./作业提交/') and file.endswith('的第一次提交.md') for file in changed_files):
-        message = '请仅在 ./作业提交 文件夹下创建一个符合 `*的第一次提交.md` 的文件。'
+    cmd = 'git diff --name-only HEAD $(git merge-base HEAD upstream/homework1)'
+    output = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+    changed_files = output.strip().split('\n')
+    if len(changed_files) != 1:
+        message = '请仅在 ./作业提交 文件夹下创建一个符合 *的第一次提交.md 的文件。'
         approve = False
 
 if __name__ == '__main__':
